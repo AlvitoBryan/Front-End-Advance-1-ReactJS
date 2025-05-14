@@ -1,5 +1,6 @@
 import { ButtonSimpanProfile, ButtonHapusAkun } from "./Button";
 import { useEffect, useState } from "react";
+import { updateUser, deleteUser } from "../services/api";
 
 const ProfileMain = () => {
     const [user, setUser] = useState({
@@ -37,30 +38,32 @@ const ProfileMain = () => {
         setEditUser((prev) => ({ ...prev, [name]: value }));
     };
 
-    const handleSimpan = (e) => {
+    const handleSimpan = async (e) => {
         e.preventDefault();
-        // Update sessionStorage
-        sessionStorage.setItem("currentUser", JSON.stringify(editUser));
-        setUser(editUser);
-        // Update localStorage
-        const users = JSON.parse(localStorage.getItem("users")) || [];
-        const updatedUsers = users.map(u =>
-            u.email === user.email ? { ...u, ...editUser } : u
-        );
-        localStorage.setItem("users", JSON.stringify(updatedUsers));
-        setPopupMsg("Profil berhasil diperbarui!");
-        setShowPopup(true);
+        try {
+            const currentUser = JSON.parse(sessionStorage.getItem("currentUser"));
+            const updated = await updateUser(currentUser.id, editUser);
+            sessionStorage.setItem("currentUser", JSON.stringify(updated));
+            setUser(updated);
+            setEditUser(updated);
+            setPopupMsg("Profil berhasil diperbarui!");
+            setShowPopup(true);
+        } catch {
+            setPopupMsg("Gagal memperbarui profil!");
+            setShowPopup(true);
+        }
     };
 
-    const handleHapusAkun = () => {
-        // Hapus user dari localStorage
-        const users = JSON.parse(localStorage.getItem("users")) || [];
-        const filteredUsers = users.filter(u => u.email !== user.email);
-        localStorage.setItem("users", JSON.stringify(filteredUsers));
-        // Hapus session
-        sessionStorage.removeItem("currentUser");
-        // Redirect ke beranda
-        window.location.href = "/";
+    const handleHapusAkun = async () => {
+        try {
+            const currentUser = JSON.parse(sessionStorage.getItem("currentUser"));
+            await deleteUser(currentUser.id);
+            sessionStorage.removeItem("currentUser");
+            window.location.href = "/";
+        } catch {
+            setPopupMsg("Gagal menghapus akun!");
+            setShowPopup(true);
+        }
     };
 
     return(

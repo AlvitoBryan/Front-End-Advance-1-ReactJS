@@ -1,20 +1,19 @@
 import React, { useState } from "react";
+import { registerUser, getUsers } from '../services/api';
 
 const AuthFormContentWrapper = ({ inputs, buttons, onSubmitForm, mode = "register" }) => {
   const [showPopup, setShowPopup] = useState(false);
   const [popupMsg, setPopupMsg] = useState("");
 
-  const handleDaftar = (e) => {
+  const handleDaftar = async (e) => {
     e.preventDefault();
 
-    // Validasi konfirmasi kata sandi
     if (e.target.katasandi.value !== e.target.konfirmasikatasandi.value) {
       setPopupMsg("Konfirmasi kata sandi tidak sama dengan kata sandi!");
       setShowPopup(true);
       return;
     }
 
-    // Ambil data dari form
     const dataBaru = {
       namalengkap: e.target.namalengkap.value,
       email: e.target.email.value,
@@ -24,50 +23,43 @@ const AuthFormContentWrapper = ({ inputs, buttons, onSubmitForm, mode = "registe
       konfirmasikatasandi: e.target.konfirmasikatasandi.value,
     };
 
-    // Ambil array user dari localStorage, jika belum ada, buat array kosong
-    const users = JSON.parse(localStorage.getItem("users")) || [];
+    try {
+      // Kirim data ke API
+      const user = await registerUser(dataBaru);
 
-    // Cek apakah email sudah digunakan
-    const emailUsed = users.some((u) => u.email === dataBaru.email);
-    if (emailUsed) {
-      setPopupMsg("Email sudah digunakan!");
+      sessionStorage.setItem("currentUser", JSON.stringify(user));
+      window.location.href = "/";
+    } catch {
+      setPopupMsg("Gagal mendaftar user! Pastikan email belum digunakan.");
       setShowPopup(true);
-      return;
     }
-
-    // Tambahkan data baru ke array
-    users.push(dataBaru);
-
-    // Simpan kembali ke localStorage
-    localStorage.setItem("users", JSON.stringify(users));
-
-    // Simpan session user ke sessionStorage
-    sessionStorage.setItem("currentUser", JSON.stringify(dataBaru));
-
-    window.location.href = "/";
   };
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     const email = e.target.email.value;
     const password = e.target.password.value;
-    const users = JSON.parse(localStorage.getItem("users")) || [];
-    const user = users.find(
-      (u) => u.email === email && u.katasandi === password
-    );
-    if (user) {
-      // Simpan session user ke sessionStorage
-      sessionStorage.setItem("currentUser", JSON.stringify(user));
-      window.location.href = "/";
-    } else {
-      setPopupMsg("Email atau password salah!");
+    try {
+      const users = await getUsers();
+      const user = users.find(
+        (u) => u.email === email && u.katasandi === password
+      );
+      if (user) {
+        sessionStorage.setItem("currentUser", JSON.stringify(user));
+        window.location.href = "/";
+      } else {
+        setPopupMsg("Email atau password salah!");
+        setShowPopup(true);
+      }
+    } catch {
+      setPopupMsg("Gagal mengambil data user!");
       setShowPopup(true);
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     if (onSubmitForm) return onSubmitForm(e);
-    if (mode === "login") return handleLogin(e);
+    if (mode === "login") return await handleLogin(e);
     return handleDaftar(e);
   };
 
